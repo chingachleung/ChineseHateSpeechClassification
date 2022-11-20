@@ -9,7 +9,7 @@ To test a fine-tuned model on a test set, run:
 
 `python test_model.py --testing_file <test_file.csv> --model_file <model.pt>`
 
-This file print out F1 scores,  confusion matrix automatically 
+This script prints out F1 scores (macro + micro),  and confusion matrix automatically 
 
 
 
