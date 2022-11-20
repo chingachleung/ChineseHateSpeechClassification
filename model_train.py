@@ -5,10 +5,7 @@ from validation import valid
 import numpy as np
 device = 'cuda' if cuda.is_available() else 'cpu'
 from sklearn.metrics import f1score
-#https://stackoverflow.com/questions/71998978/early-stopping-in-pytorch
-#https://github.com/christianversloot/machine-learning-articles/blob/main/how-to-use-k-fold-cross-validation-with-pytorch.md
 
-#TRAIN_SIZE = 0.9
 LEARNING_RATE = 1e-05
 
 class EarlyStopper:
