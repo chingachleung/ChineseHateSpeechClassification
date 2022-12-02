@@ -1,20 +1,16 @@
-from tqdm import tqdm
+
 import torch
 from torch import cuda
 import argparse
-import numpy as np
 from sklearn.metrics import classification_report, confusion_matrix,ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import pandas as pd
 from torch.utils.data import DataLoader
 from HateSpeechData import HateSpeechData
 from BertClass import BertClass
-import torch.nn as nn
 from transformers import AutoTokenizer
-from sklearn.preprocessing import OneHotEncoder
-
-
-from validation import valid
+from validation2 import valid
+import numpy as np
 device = 'cuda' if cuda.is_available() else 'cpu'
 
 args = argparse.ArgumentParser(description='validating the Roberta model')
@@ -33,6 +29,7 @@ def make_confusion_matrix(labels, predictions):
     cm = confusion_matrix(labels, predictions, labels=label_names)
     disp = ConfusionMatrixDisplay(confusion_matrix=cm,display_labels=label_names)
     disp.plot(ax=ax2)
+    plt.rcParams.update({'font.size': 16})
     plt.show()
     plt.savefig('testing_cm.png')
 
@@ -41,29 +38,32 @@ if __name__=="__main__":
 
     model_file = args.model_file
     testing_file = args.testing_file
+    label_dict = {0:"Neither", 1: "Abusive-only", 2: "Hate-speech"}
+    class_weights = [0.3, 0.4, 0.3] # map 0 to 0.3, 1 t0 0.4...
+    weight_dict = torch.tensor(class_weights).to(device)
+    loss_function = torch.nn.CrossEntropyLoss(weight=weight_dict)
 
     model = BertClass()
     #model = nn.DataParallel(model, device_ids=[0,1,2,3])
     #model = nn.DataParallel(model, device_ids=[0])
     model.to(device)
-
-    loss_function = torch.nn.CrossEntropyLoss()
     tokenizer = AutoTokenizer.from_pretrained("bert-base-chinese", truncation=True)
-    onehot_encoder = OneHotEncoder(handle_unknown="ignore")
 
-    #optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     checkpoint = torch.load(model_file)
     model.load_state_dict(checkpoint['model_state_dict'])
-    #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    #onehot_encoder = checkpoint['encoder']
-
     test_data = pd.read_csv(testing_file, encoding='utf-8-sig')
-    testing_onehot_targets = onehot_encoder.transform(test_data['Label'].values.reshape(-1, 1)).toarray()
-    testing_set = HateSpeechData(test_data['Tweet'], testing_onehot_targets, tokenizer, MAX_LEN)
+    targets = test_data["Label"].astype(int)
+    testing_set = HateSpeechData(test_data['Tweet'],targets, tokenizer, MAX_LEN)
     testing_loader = DataLoader(testing_set)
 
-    epoch_loss, predictions, labels = valid(model, testing_loader,onehot_encoder)
-
+    epoch_loss, predictions, labels = valid(model, testing_loader,loss_function)
+    for p in predictions:
+      print(p)
+    print("real labels: ########################################################")
+    for l in labels:
+      print(l)
+    labels = np.vectorize(label_dict.get)(labels)
+    predictions = np.vectorize(label_dict.get)(predictions)
     scores = classification_report(labels, predictions)
     print(scores)
 
