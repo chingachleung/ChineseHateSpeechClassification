@@ -1,15 +1,16 @@
 import torch
 from tqdm import tqdm
 from torch import cuda
-from validation import valid
+from validation2 import valid
 import numpy as np
+
 device = 'cuda' if cuda.is_available() else 'cpu'
-from sklearn.metrics import f1score
+from sklearn.metrics import f1_score
 
 LEARNING_RATE = 1e-05
 
 class EarlyStopper:
-    def __init__(self, patience=3, min_delta=0):
+    def __init__(self, patience=2, min_delta=-0.001):
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
@@ -27,12 +28,12 @@ class EarlyStopper:
 
 
 
-def train(model,epochs,training_loader, val_loader,onehot_encoder):
-    loss_function = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
+def train(model,optimizer,epochs,training_loader, val_loader):
+    model.to(device)
+    class_weights = [0.3, 0.4, 0.3] # map 0 to 0.3, 1 t0 0.4...
+    weight_dict = torch.tensor(class_weights).to(device)
+    loss_function = torch.nn.CrossEntropyLoss(weight=weight_dict)
     early_stopper = EarlyStopper()
-    f1_micro = F1Score(num_classes=3)
-    f1_macro = F1Score(num_classes=3, average='macro')
     model.train()
 
     for epoch in range(epochs):
@@ -45,14 +46,12 @@ def train(model,epochs,training_loader, val_loader,onehot_encoder):
             ids = data['ids'].to(device, dtype=torch.long)
             mask = data['mask'].to(device, dtype=torch.long)
             token_type_ids = data['token_type_ids'].to(device, dtype=torch.long)
-            targets = data['targets'].to(device)
-            target_big_val, target_big_idx = torch.max(targets, dim=1)
+            targets = data['targets'].to(device) # printing indices not one got
             outputs = model(ids, mask, token_type_ids)  # pooler outputs of each sequence
-            loss = loss_function(outputs, target_big_idx)
+            loss = loss_function(outputs, targets)
             tr_loss += loss.item()
             pred_big_val, pred_big_idx = torch.max(outputs.data, dim=1)  # big_idx is the location of max val found
-            #n_correct += calcuate_accuracy(pred_big_idx, target_big_idx)
-            n_correct += (pred_big_idx==target_big_idx).sum().item()
+            n_correct += (pred_big_idx==targets).sum().item()
 
             nb_tr_steps += 1
             nb_tr_examples += targets.size(0)
@@ -62,17 +61,16 @@ def train(model,epochs,training_loader, val_loader,onehot_encoder):
                 accu_step = round(n_correct / nb_tr_examples, 4)
                 print(f"Training Loss per {_} steps: {loss_step}")
                 print(f"Training Accuracy after {_} steps: {accu_step}")
-                #loss_list.append(loss_step)
-                #accuracy_list.append(accu_step)
+
             optimizer.zero_grad()  # clear out old gradients that already have been used to update weights
             loss.backward()  # calculate the gradient of loss
             # # When using GPU
             optimizer.step()  # update the parameters
 
 
-        val_loss, preds, labels = valid(model,val_loader,onehot_encoder)
-        micro = f1score(labels, average='micro')
-        macro = f1score(labels, average='macro')
+        val_loss, preds, labels = valid(model,val_loader,loss_function)
+        micro = f1_score(labels, preds, average='micro')
+        macro = f1_score(labels, preds, average='macro')
 
         print(f"epoch {epoch}: validation loss = {val_loss},validation micro score: {micro}, validation macro score: {macro}")
         if early_stopper.early_stop(val_loss):
