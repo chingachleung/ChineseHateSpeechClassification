@@ -13,7 +13,7 @@ This script prints out F1 scores (macro + micro),  and confusion matrix automati
 
 # Data 
 
-Contains around 10,000 Tweets in Traditional Chinese, Simplified Chinse and Cantonese. 
+Contains around 10,000 Tweets in Traditional Chinese, Simplified Chinse and Cantonese. To inqure about the data, please contact me at wl607@georgetown.edu.
 
 
 
