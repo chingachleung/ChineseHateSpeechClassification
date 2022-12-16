@@ -1,4 +1,3 @@
-# Importing the libraries needed
 import pandas as pd
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
@@ -21,7 +20,7 @@ args = args.parse_args()
 
 MAX_LEN = 100
 BATCH_SIZE = 15
-EPOCHS = 2
+EPOCHS = 8
 LEARNING_RATE = 1e-05
 
 if __name__=="__main__":
@@ -55,19 +54,14 @@ if __name__=="__main__":
 
     tokenizer = AutoTokenizer.from_pretrained("bert-base-chinese", truncation=True)
 
-    #tweets = tweets.apply(lambda x: torch.nn.functional.one_hot(x))
     training_set = HateSpeechData(tweets, categories, tokenizer, MAX_LEN)
     training_loader = DataLoader(training_set, **train_params)
-    
+
+
+    #apparently pytorch does one-hot encoding itself if you pass the class index
     val_set = HateSpeechData(val_tweets, val_categories, tokenizer, MAX_LEN)
     val_loader = DataLoader(val_set)
 
     #start training
-    model, loss, optimizer = train(model, optimizer, EPOCHS, training_loader, val_loader)
-    #save the model
-    torch.save({'epoch': EPOCHS,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': loss,},'bert_model.pt')
+    train(model, optimizer, EPOCHS, training_loader, val_loader)
 
-    print('All files saved')
