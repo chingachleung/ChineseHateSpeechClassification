@@ -1,4 +1,3 @@
-# Importing the libraries needed
 import pandas as pd
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
@@ -12,7 +11,7 @@ torch.cuda.empty_cache()
 from HateSpeechData import HateSpeechData
 from BertClass import BertClass
 from model_train2 import *
-import chinese_converter
+#import chinese_converter
 logging.basicConfig(level=logging.ERROR)
 args = argparse.ArgumentParser(description='fine-tuning on tuned-BERT model')
 args.add_argument('-a', '--train_file', type=str, help='train file', required=True)
@@ -29,7 +28,7 @@ PATH = args.model_file
 
 MAX_LEN = 100
 BATCH_SIZE = 25
-EPOCHS = 4
+EPOCHS = 8
 
 if __name__=="__main__":
 
@@ -39,14 +38,14 @@ if __name__=="__main__":
     model = BertClass()
     model.to(device)
     #freeze the weights
-    #for param in model.parameters():
-        #param.requires_grad = False
+    for param in model.l1.parameters():
+        param.requires_grad = False
 
     optimizer = torch.optim.Adam(params=model.parameters(), lr=LEARNING_RATE)
     #when using GPU
-    checkpoint = torch.load(PATH)
+    #checkpoint = torch.load(PATH)
     #if saved using GPU, and loaded to CPU
-    #checkpoint = torch.load(PATH, map_location=torch.device('cpu'))
+    checkpoint = torch.load(PATH, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     model.classifier = torch.nn.Linear(21128,3)
@@ -60,31 +59,19 @@ if __name__=="__main__":
                     }
 
     #load the data
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-chinese", truncation=True)
     train_data = pd.read_csv(train_file, encoding='utf-8-sig')
     val_data = pd.read_csv(val_file, encoding='utf-8-sig')
 
     tweets = train_data["Tweet"]
     categories = train_data["Label"].astype(int)
-    tweets = tweets.apply(lambda x: chinese_converter.to_simplified(x))
-
     val_tweets = val_data["Tweet"]
     val_categories = val_data["Label"].astype(int)
-    val_tweets = val_tweets.apply(lambda x: chinese_converter.to_simplified(x))
-
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-chinese", truncation=True)
 
     training_set = HateSpeechData(tweets, categories, tokenizer, MAX_LEN)
     training_loader = DataLoader(training_set, **train_params)
-
     val_set = HateSpeechData(val_tweets, val_categories, tokenizer, MAX_LEN)
     val_loader = DataLoader(val_set)
 
     #start training
-    model, loss, optimizer = train(model,optimizer, EPOCHS, training_loader, val_loader)
-    #save the model
-    torch.save({'epoch': EPOCHS,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'loss': loss,},'transfer_model_simplified_weighted.pt')
-
-    print('All files saved')
+    train(model,optimizer, EPOCHS, training_loader, val_loader)
