@@ -11,9 +11,13 @@ To test a fine-tuned model on a test set, run:
 
 This script prints out F1 scores (macro + micro),  and confusion matrix automatically. 
 
+To create a further fine-tune a model that is already trained: 
+
+`python transfer_learning.py --train_file <train_file.csv> --val_file <validation_file.csv> --model_file <model.pt>`
+
 # Data 
 
-Contains around 10,000 Tweets in Traditional Chinese, Simplified Chinse and Cantonese. To inqure about the data, please contact me at wl607@georgetown.edu.
+Contains around 9,056 Tweets in Traditional Chinese, Simplified Chinse characters. Due to privacy restriction, I cannot publicly release the dataset. Please contact me directly at wl607@georgetown.edu to inquire about the data.
 
 
 
