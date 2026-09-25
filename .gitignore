@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# model outputs and checkpoints
+runs/
+*.pt
+*.bin
+*.safetensors
+
+# data is not redistributable
+data/*.csv
+!data/example.csv
+
+.DS_Store
+.ipynb_checkpoints/
